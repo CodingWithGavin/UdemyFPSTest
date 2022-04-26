@@ -11,13 +11,25 @@ public class PlayerController : MonoBehaviour
 
     public bool invertlook;
 
-    public float moveSpeed = 5f;
+    public float moveSpeed = 5f, runSpeed  = 8f;
+    private float activeMoveSpeed;
     private Vector3 moveDir, movement;
 
+    public CharacterController charController;
+    
+    private Camera cam;
+
+    public float jumpForce = 5f, gravityMod = 2.5f;
+
+    public Transform groundCheckPoint;
+    private bool isGrounded;
+    public LayerMask groundLayers;
     // Start is called before the first frame update
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+
+        cam = Camera.main;
     }
 
     // Update is called once per frame
@@ -42,10 +54,75 @@ public class PlayerController : MonoBehaviour
 
         moveDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));
 
-        movement = ((transform.forward * moveDir.z) + (transform.right * moveDir.x)).normalized;
+        if(Input.GetKey(KeyCode.LeftShift))
+        {
+            activeMoveSpeed = runSpeed;
+        }
+        else
+        {
+            activeMoveSpeed = moveSpeed;
+        }
 
-        transform.position += movement * moveSpeed * Time.deltaTime;
+        float yVel = movement.y;
 
+        movement = ((transform.forward * moveDir.z) + (transform.right * moveDir.x)).normalized * activeMoveSpeed;
+
+        movement.y = yVel;
+
+        if (charController.isGrounded)
+        {
+            movement.y = 0f;
+        }
+
+        isGrounded = Physics.Raycast(groundCheckPoint.position, Vector3.down, .25f, groundLayers);
+
+        if(Input.GetButtonDown("Jump")  && isGrounded)
+        {
+            movement.y = jumpForce;
+        }
         
+        movement.y += Physics.gravity.y * Time.deltaTime * gravityMod;
+        
+        charController.Move(movement * Time.deltaTime);
+
+
+        if(Input.GetMouseButtonDown(0))
+        {
+            Shoot();
+        }
+
+
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Cursor.lockState = CursorLockMode.None;
+        }
+        else if (Cursor.lockState == CursorLockMode.None)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+        }
+    }
+
+    private void Shoot()
+    {
+        Ray ray = cam.ViewportPointToRay(new Vector3(.5f, .5f, 0f));
+        ray.origin = cam.transform.position;
+
+        if(Physics.Raycast(ray, out RaycastHit hit))
+        {
+            Debug.Log("We hit " + hit.collider.gameObject.name);
+        }
+        else
+        {
+            Debug.Log("Miss");
+        }
+    }
+    private void LateUpdate()
+    {
+        cam.transform.position = viewPoint.position;
+        cam.transform.rotation = viewPoint.rotation;
     }
 }
